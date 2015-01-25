@@ -1,12 +1,12 @@
 ---
-title: "Pratical Machine Learning Project"
+title: "Practical Machine Learning Project"
 output: html_document
 ---
 #Introduction
 
 Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it.
 
-In this project, we will be using data from Groupware@LES where the data is gathered from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+In this project, we will be using data from Groupware@LES where the data is gathered from accelerometers on the belt, forearm, arm, and dumbbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
 
 #Data 
 The training data for this project are available here: 
@@ -18,8 +18,12 @@ https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
 The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har.
 
 ```{r, echo=TRUE, cache=TRUE}
-download.file(url = "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile = "pml-training.csv")
-download.file(url = "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", destfile = "pml-testing.csv")
+setInternet2(use = TRUE)
+url="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+download.file(url,destfile = "pml-training.csv")
+
+url="https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+download.file(url, destfile = "pml-testing.csv")
 
 pmlTrain<-read.csv("pml-training.csv", header=T, na.strings=c("NA", "#DIV/0!"))
 pmlTest<-read.csv("pml-testing.csv", header=T, na.string=c("NA", "#DIV/0!"))
@@ -30,7 +34,7 @@ sapply(pmlTrain, class)
 #Data Cleaning
 There were 19622 observations with 160 variables within the training data. I had also ran a check to confirmed that the variables are in the proper data types (i.e. classe = Factors) before proceeding. It is also noted that many columns contains all blank values and these will not be statistically influential for the prediction. Therefore we will drop those columns that contains all blank values.
 
-There are also a few variables which is meant for identifying the record and does not have any statistical value for the prediction. We will also remove these variables to reduce the data set.
+There are also a few variables which is meant for identifying or describing the record (e.g X, user_name, raw_timestamp_part1, raw_timestamp_part2, cvtd_timestamp, new_window and num_window.) and these do not have any statistical value for the prediction. We will also remove these variables to reduce the data set.
 
 ```{r, echo=TRUE, cache=TRUE}
 ##Removing blank columns in both Training data set
@@ -41,13 +45,15 @@ pmlTrain<-pmlTrain[,-c(1:7)]
 
 ```
 
-#Data PArtitioning
+#Data Partitioning
 As there is no validation data set, we will partition the Training Data Set into training and validation (60/40).
 ```{r, echo=TRUE, cache=TRUE}
+library(caret)
 inTrain <- createDataPartition(y=pmlTrain$classe, p=0.60, list=FALSE)
 pmlTrain_sub <- pmlTrain[inTrain,]
 pmlTrain_val <- pmlTrain[-inTrain,]
 ```
+
 
 #Modelling with the training data
 We will run the training data over 3 models (classification tree and Random Forest) and compare the results from the confusion matrix for each model for highest accuracy while using the training data. 
@@ -56,31 +62,28 @@ For fairness, we will also set the same seed for each of the model runs.
 
 ##Model 1 - Using Classification Tree Method
 ```{r, echo=TRUE, cache=TRUE}
-library(caret)
 set.seed(12345)
-ModelTree <- train(classe~.,data=pmlTrain_sub, method="rpart")
+ModelTree <- train(pmlTrain_sub$classe~.,data=pmlTrain_sub, method="rpart")
 PredTree <- predict(ModelTree, pmlTrain_val)
 PredTree_Test <- predict(ModelTree, pmlTest)
 confusionMatrix(PredTree, pmlTrain_val$classe)
+
 ```
 
 ##Model 2 - Using Random Forest Method
 ```{r, echo=TRUE, cache=TRUE}
-set.seed(12345)
+library(randomForest)
 tr<-trainControl(method="cv", number=5)
-ModelRF <- train(classe~.,data=pmlTrain_sub, method="rf",prox=TRUE,trControl=tr)
+set.seed(12345)
+ModelRF <- randomForest(pmlTrain_sub$classe~., data=pmlTrain_sub, ntree = 8)
 PredRF <- predict(ModelRF, pmlTrain_val)
 PredRF_Test <- predict(ModelRF, pmlTest)
 confusionMatrix(PredRF, pmlTrain_val$classe)
 ```
-PredTree_Test
+
 
 #Conclusion
-Based on the compairson, the Random Forest results is statistically more accrate compared to the Classification Tree. Therefore the model was used to predict the answers for the Test list. 
-
-```{r, echo=TRUE, cache=TRUE}
-
-```
+Based on the comparison, the classification produces a accuracy of 0.9463  with 95% CI : (0.9426, 0.9498) and the Random Forest produces an accuracy of 0.9478 with 95% CI : (0.9442, 0.9512) The random forest is statistically slightly more accurate compared to the Classification Tree. Therefore the Random Forest model was choosen to predict the answers for the Test list. 
 
 #Results Generation
 ```{r, echo=TRUE, cache=TRUE}
