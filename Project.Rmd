@@ -30,10 +30,23 @@ sapply(pmlTrain, class)
 #Data Cleaning
 There were 19622 observations with 160 variables within the training data. I had also ran a check to confirmed that the variables are in the proper data types (i.e. classe = Factors) before proceeding. It is also noted that many columns contains all blank values and these will not be statistically influential for the prediction. Therefore we will drop those columns that contains all blank values.
 
+There are also a few variables which is meant for identifying the record and does not have any statistical value for the prediction. We will also remove these variables to reduce the data set.
+
 ```{r, echo=TRUE, cache=TRUE}
 ##Removing blank columns in both Training data set
 pmlTrain<-pmlTrain[,colSums(is.na(pmlTrain)) == 0]
 
+##Removing Variables that will not be used for prediction.
+pmlTrain<-pmlTrain[,-c(1:7)]
+
+```
+
+#Data PArtitioning
+As there is no validation data set, we will partition the Training Data Set into training and validation (60/40).
+```{r, echo=TRUE, cache=TRUE}
+inTrain <- createDataPartition(y=pmlTrain$classe, p=0.60, list=FALSE)
+pmlTrain_sub <- pmlTrain[inTrain,]
+pmlTrain_val <- pmlTrain[-inTrain,]
 ```
 
 #Modelling with the training data
@@ -45,21 +58,22 @@ For fairness, we will also set the same seed for each of the model runs.
 ```{r, echo=TRUE, cache=TRUE}
 library(caret)
 set.seed(12345)
-ModelTree <- train(classe~.,data=pmlTrain, method="rpart")
-PredTree <- predict(ModelTree, pmlTrain)
+ModelTree <- train(classe~.,data=pmlTrain_sub, method="rpart")
+PredTree <- predict(ModelTree, pmlTrain_val)
 PredTree_Test <- predict(ModelTree, pmlTest)
-confusionMatrix(PredTree, pmlTrain$classe)
+confusionMatrix(PredTree, pmlTrain_val$classe)
 ```
 
 ##Model 2 - Using Random Forest Method
 ```{r, echo=TRUE, cache=TRUE}
 set.seed(12345)
-ModelRF <- train(classe~.,data=pmlTrain, method="rf",number=3)
-PredRF <- predict(ModelRF, pmlTrain)
+tr<-trainControl(method="cv", number=5)
+ModelRF <- train(classe~.,data=pmlTrain_sub, method="rf",prox=TRUE,trControl=tr)
+PredRF <- predict(ModelRF, pmlTrain_val)
 PredRF_Test <- predict(ModelRF, pmlTest)
-confusionMatrix(PredRF, pmlTrain$classe)
+confusionMatrix(PredRF, pmlTrain_val$classe)
 ```
-
+PredTree_Test
 
 #Conclusion
 Based on the compairson, the Random Forest results is statistically more accrate compared to the Classification Tree. Therefore the model was used to predict the answers for the Test list. 
