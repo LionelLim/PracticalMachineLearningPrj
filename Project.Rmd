@@ -1,0 +1,83 @@
+---
+title: "Pratical Machine Learning Project"
+output: html_document
+---
+#Introduction
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it.
+
+In this project, we will be using data from Groupware@LES where the data is gathered from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+#Data 
+The training data for this project are available here: 
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv
+
+The test data are available here: 
+https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv
+
+The data for this project come from this source: http://groupware.les.inf.puc-rio.br/har.
+
+```{r, echo=TRUE, cache=TRUE}
+download.file(url = "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", destfile = "pml-training.csv")
+download.file(url = "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", destfile = "pml-testing.csv")
+
+pmlTrain<-read.csv("pml-training.csv", header=T, na.strings=c("NA", "#DIV/0!"))
+pmlTest<-read.csv("pml-testing.csv", header=T, na.string=c("NA", "#DIV/0!"))
+summary(pmlTrain)
+sapply(pmlTrain, class)
+```
+
+#Data Cleaning
+There were 19622 observations with 160 variables within the training data. I had also ran a check to confirmed that the variables are in the proper data types (i.e. classe = Factors) before proceeding. It is also noted that many columns contains all blank values and these will not be statistically influential for the prediction. Therefore we will drop those columns that contains all blank values.
+
+```{r, echo=TRUE, cache=TRUE}
+##Removing blank columns in both Training data set
+pmlTrain<-pmlTrain[,colSums(is.na(pmlTrain)) == 0]
+
+```
+
+#Modelling with the training data
+We will run the training data over 3 models (classification tree and Random Forest) and compare the results from the confusion matrix for each model for highest accuracy while using the training data. 
+
+For fairness, we will also set the same seed for each of the model runs.
+
+##Model 1 - Using Classification Tree Method
+```{r, echo=TRUE, cache=TRUE}
+library(caret)
+set.seed(12345)
+ModelTree <- train(classe~.,data=pmlTrain, method="rpart")
+PredTree <- predict(ModelTree, pmlTrain)
+PredTree_Test <- predict(ModelTree, pmlTest)
+confusionMatrix(PredTree, pmlTrain$classe)
+```
+
+##Model 2 - Using Random Forest Method
+```{r, echo=TRUE, cache=TRUE}
+set.seed(12345)
+ModelRF <- train(classe~.,data=pmlTrain, method="rf",number=3)
+PredRF <- predict(ModelRF, pmlTrain)
+PredRF_Test <- predict(ModelRF, pmlTest)
+confusionMatrix(PredRF, pmlTrain$classe)
+```
+
+
+#Conclusion
+Based on the compairson, the Random Forest results is statistically more accrate compared to the Classification Tree. Therefore the model was used to predict the answers for the Test list. 
+
+```{r, echo=TRUE, cache=TRUE}
+
+```
+
+#Results Generation
+```{r, echo=TRUE, cache=TRUE}
+answers = rep("A", 20)
+answers <- as.character(PredRF_Test)
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+pml_write_files(answers)
+```
